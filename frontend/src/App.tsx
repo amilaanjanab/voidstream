@@ -15,8 +15,29 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [showLogs, setShowLogs] = useState(false)
   const [quality, setQuality] = useState('best')
+  const [downloadPath, setDownloadPath] = useState('downloads')
   const ws = useRef<WebSocket | null>(null)
   const logsEndRef = useRef<HTMLDivElement>(null)
+
+  // Load Config
+  useEffect(() => {
+    fetch('http://localhost:8001/config')
+      .then(res => res.json())
+      .then(data => {
+        if (data.download_path) setDownloadPath(data.download_path)
+      })
+      .catch(err => console.error("Config load failed", err))
+  }, [])
+
+  const changeFolder = async () => {
+    try {
+      const res = await fetch('http://localhost:8001/change_folder', { method: 'POST' })
+      const data = await res.json()
+      if (data.path) setDownloadPath(data.path)
+    } catch (e) {
+      console.error(e)
+    }
+  }
 
   // Auto-scroll logs
   useEffect(() => {
@@ -249,22 +270,43 @@ export default function App() {
                 <X onClick={() => setShowSettings(false)} className="w-5 h-5 text-white/30 hover:text-white cursor-pointer" />
               </div>
 
-              <div className="space-y-4">
-                <label className="text-xs text-white/40 font-bold uppercase block">Quality Preset</label>
-                <div className="flex gap-2">
-                  {['best', 'worst'].map(q => (
+              <div className="space-y-6">
+
+                {/* Download Location */}
+                <div>
+                  <label className="text-xs text-white/40 font-bold uppercase block mb-2">Target Directory</label>
+                  <div className="flex gap-2">
+                    <div className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs font-mono text-white/70 overflow-hidden text-ellipsis whitespace-nowrap leading-7">
+                      {downloadPath || "Loading..."}
+                    </div>
                     <button
-                      key={q}
-                      onClick={() => setQuality(q)}
-                      className={cn("flex-1 py-3 rounded-lg border text-xs font-bold uppercase transition-all",
-                        quality === q
-                          ? "bg-red-600/20 border-red-600 text-red-500 shadow-[0_0_15px_rgba(220,38,38,0.2)]"
-                          : "bg-white/5 border-transparent text-white/40 hover:bg-white/10"
-                      )}         >
-                      {q}
+                      onClick={changeFolder}
+                      className="px-4 bg-white/10 hover:bg-white/20 text-white/80 rounded-lg text-xs font-bold uppercase transition-colors"
+                    >
+                      Change
                     </button>
-                  ))}
+                  </div>
                 </div>
+
+                {/* Quality Selection */}
+                <div>
+                  <label className="text-xs text-white/40 font-bold uppercase block mb-2">Quality Preservation</label>
+                  <div className="flex gap-2">
+                    {['best', 'worst'].map(q => (
+                      <button
+                        key={q}
+                        onClick={() => setQuality(q)}
+                        className={cn("flex-1 py-3 rounded-lg border text-xs font-bold uppercase transition-all",
+                          quality === q
+                            ? "bg-red-600/20 border-red-600 text-red-500 shadow-[0_0_15px_rgba(220,38,38,0.2)]"
+                            : "bg-white/5 border-transparent text-white/40 hover:bg-white/10"
+                        )}         >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
               </div>
             </div>
           </motion.div>

@@ -75,8 +75,8 @@ With its signature **"Darkroom Red"** aesthetic and **Cinema Mode** layout, it f
 
 1.  **Clone the Repository**
     ```bash
-    git clone https://github.com/YOUR_USERNAME_HERE/voidstream-live-stream-downloader.git
-    cd voidstream-live-stream-downloader
+    git clone https://github.com/amilaanjanab/voidstream.git
+    cd voidstream
     ```
 
 2.  **Initialize Backend**

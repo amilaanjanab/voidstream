@@ -27,49 +27,59 @@ class DownloadRequest(BaseModel):
     quality: str = "best"
     is_live: bool = True
 
-download_queue = queue.Queue()
-active_processes = {}
+# Config Management
+CONFIG_FILE = "config.json"
 
-def run_download(process_id: str, command: list, ws_queue: queue.Queue):
-    """
-    Runs the download subprocess and pipes output to a queue for the websocket.
-    """
-    print(f"Starting download process {process_id}: {' '.join(command)}")
+def load_config():
+    default_config = {"download_path": "downloads", "quality": "best"}
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                return {**default_config, **json.load(f)}
+        except:
+            pass
+    return default_config
+
+def save_config(new_config):
+    current = load_config()
+    current.update(new_config)
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(current, f)
+
+@app.get("/config")
+def get_config():
+    return load_config()
+
+@app.post("/change_folder")
+def change_folder():
+    """Opens a native folder picker dialog on the server (host) machine."""
     try:
-        # Use Popen to capture stdout/stderr creatively
-        process = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
-            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
-        )
-        active_processes[process_id] = process
-
-        for line in iter(process.stdout.readline, ''):
-            if process_id not in active_processes:
-                 # Process was likely killed manually
-                break
-            ws_queue.put({"type": "log", "message": line.strip()})
-            # Attempt to parse progress if possible (yt-dlp specific)
-            if "[download]" in line and "%" in line:
-                 ws_queue.put({"type": "progress", "raw": line.strip()})
+        # Run a tiny python script to open the dialog without crashing the main asyncio loop
+        cmd = [
+            sys.executable, 
+            "-c", 
+            "import tkinter.filedialog; import tkinter; root=tkinter.Tk(); root.withdraw(); root.wm_attributes('-topmost', 1); print(tkinter.filedialog.askdirectory())"
+        ]
         
-        process.stdout.close()
-        return_code = process.wait()
+        # Run subprocess
+        path = subprocess.check_output(
+            cmd, 
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
+            text=True
+        ).strip()
         
-        if return_code == 0:
-            ws_queue.put({"type": "status", "status": "completed"})
-        else:
-            ws_queue.put({"type": "status", "status": "failed", "code": return_code})
-
+        if path:
+            # Update config
+            save_config({"download_path": path})
+            return {"status": "success", "path": path}
+        
     except Exception as e:
-        ws_queue.put({"type": "error", "message": str(e)})
-    finally:
-        if process_id in active_processes:
-            del active_processes[process_id]
-        ws_queue.put(None) # Signal end of stream
+        print(f"Error opening dialog: {e}")
+        
+    return {"status": "cancelled", "path": load_config()['download_path']}
+
+# Global state for tracking downloads
+active_processes = {}
 
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
@@ -103,6 +113,10 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                         url = message['url']
                         quality = message.get('quality', 'best')
                         
+                        # Load current config for path
+                        config = load_config()
+                        download_path = config.get('download_path', 'downloads')
+                        
                         # Generate timestamp for filename (using . instead of : for Windows compatibility)
                         time_str = time.strftime("[%H.%M]")
 
@@ -110,7 +124,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                         cmd = [
                             sys.executable, "-m", "yt_dlp",
                             url,
-                            "-o", f"downloads/%(title)s {time_str}.%(ext)s",
+                            "-o", f"{download_path}/%(title)s {time_str}.%(ext)s",
                             "--no-part", 
                             "--restrict-filenames",
                         ]
@@ -122,7 +136,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                         await websocket.send_json({"type": "log", "message": f"[CMD] Initializing capture sequence..."})
                         
                         # Ensure download dir exists
-                        os.makedirs("downloads", exist_ok=True)
+                        os.makedirs(download_path, exist_ok=True)
                         
                         try:
                             # Start process with DEVNULL stdin to prevent interactive hangs
