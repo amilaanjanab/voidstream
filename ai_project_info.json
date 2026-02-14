@@ -1,0 +1,63 @@
+{
+    "project_name": "Live_Stream_Saver",
+    "root_path": "D:\\VS_Code\\Live_Stream_Saver",
+    "entry_point": "start_app.bat",
+    "description": "Project configuration for AI Agents and Dev Launcher.",
+    "last_updated": 1771093661.6636887,
+    "structure_map": [
+        {
+            "folder": "",
+            "files": [
+                "start_app.bat",
+                "README.md"
+            ]
+        },
+        {
+            "folder": "backend",
+            "files": [
+                "requirements.txt",
+                "main.py"
+            ]
+        },
+        {
+            "folder": "backend\\downloads",
+            "files": []
+        },
+        {
+            "folder": "frontend",
+            "files": [
+                "eslint.config.js",
+                "index.html",
+                "README.md",
+                "tsconfig.app.json",
+                "tsconfig.json",
+                "tsconfig.node.json",
+                "vite.config.ts",
+                ".gitignore",
+                "package.json",
+                "package-lock.json"
+            ]
+        },
+        {
+            "folder": "frontend\\public",
+            "files": [
+                "vite.svg"
+            ]
+        },
+        {
+            "folder": "frontend\\src",
+            "files": [
+                "App.css",
+                "App.tsx",
+                "index.css",
+                "main.tsx"
+            ]
+        },
+        {
+            "folder": "frontend\\src\\assets",
+            "files": [
+                "react.svg"
+            ]
+        }
+    ]
+}

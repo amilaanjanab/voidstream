@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# NodeJS
+node_modules/
+dist/
+.DS_Store
+
+# Logs
+backend/downloads/
+*.log
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# App Specific (Downloads)
+downloads/
